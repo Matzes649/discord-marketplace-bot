@@ -6,15 +6,33 @@ const fs = require("fs")
 
 // ================= GLOBAL ERROR HANDLER =================
 
+const ERROR_CHANNEL_ID = "1488174153428111502"
+
 // Uncaught Errors (crash → restart durch Railway)
-process.on("uncaughtException", (err) => {
+process.on("uncaughtException", async (err) => {
   console.error("❌ Uncaught Exception:", err)
+
+  try {
+    const channel = await client.channels.fetch(ERROR_CHANNEL_ID)
+    if (channel) {
+      channel.send("❌ Bot Fehler! Schau in Railway Logs.")
+    }
+  } catch {}
+
   process.exit(1)
 })
 
 // Promise Errors
-process.on("unhandledRejection", (reason) => {
+process.on("unhandledRejection", async (reason) => {
   console.error("❌ Unhandled Rejection:", reason)
+
+  try {
+    const channel = await client.channels.fetch(ERROR_CHANNEL_ID)
+    if (channel) {
+      channel.send("❌ Bot Fehler! Schau in Railway Logs.")
+    }
+  } catch {}
+
   process.exit(1)
 })
 
@@ -79,7 +97,7 @@ mongoose.connect(process.env.MONGO_URI)
   .then(() => console.log("✅ MongoDB verbunden"))
   .catch(err => {
     console.log("❌ DB Fehler:", err)
-    process.exit(1) // auch hier restart triggern
+    process.exit(1)
   })
 
 client.login(process.env.TOKEN)

@@ -111,7 +111,8 @@ module.exports = {
     const allowedChannels = [
       "1486067292625174681",
       "1486070036199244060",
-     ] 
+      "1487913271448178890" // ✅ SHOP
+    ] 
 
     if (!allowedChannels.includes(message.channel.id)) return
 

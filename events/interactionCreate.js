@@ -3,7 +3,8 @@ const {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
-  StringSelectMenuBuilder
+  StringSelectMenuBuilder,
+  StringSelectMenuOptionBuilder
 } = require("discord.js")
 
 const User = require("../models/User")
@@ -16,6 +17,7 @@ module.exports = {
   async execute(interaction) {
     try {
 
+      // SAFE REPLY FUNCTION
       const safeReply = async (content) => {
         try {
           if (interaction.replied || interaction.deferred) {
@@ -40,54 +42,61 @@ module.exports = {
         }
       }
 
-      // 👉 WICHTIG (NEU)
       if (!interaction.isButton() && !interaction.isStringSelectMenu()) return
 
-      const msg = interaction.message
-
-      // ================= 🧠 KÄUFER AUSWAHL =================
+      // 📥 KÄUFER AUSWAHL (NEU)
       if (interaction.isStringSelectMenu()) {
 
-        if (interaction.customId.startsWith("selectbuyer-")) {
+        if (!interaction.customId.startsWith("selectbuyer-")) return
 
-          await interaction.deferReply({ flags: 64 })
+        await interaction.deferReply({ flags: 64 })
 
-          const [, tradeId, sellerId] = interaction.customId.split("-")
-          const buyerId = interaction.values[0]
+        const [, tradeId, sellerId] = interaction.customId.split("-")
 
-          tradeRatings.set(tradeId, {
-            seller: sellerId,
-            buyer: buyerId,
-            rated: []
-          })
-
-          await interaction.editReply(`✅ Verkauf an <@${buyerId}> abgeschlossen!`)
-
-          setTimeout(async () => {
-            try {
-              if (msg.deletable) await msg.delete()
-            } catch {}
-          }, 1000)
-
-          const row = new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId(`rate-${tradeId}-seller-1`).setLabel("⭐ +1 Verkäufer").setStyle(ButtonStyle.Success),
-            new ButtonBuilder().setCustomId(`rate-${tradeId}-seller-neg`).setLabel("⭐ -1 Verkäufer").setStyle(ButtonStyle.Danger),
-            new ButtonBuilder().setCustomId(`rate-${tradeId}-buyer-1`).setLabel("⭐ +1 Käufer").setStyle(ButtonStyle.Success),
-            new ButtonBuilder().setCustomId(`rate-${tradeId}-buyer-neg`).setLabel("⭐ -1 Käufer").setStyle(ButtonStyle.Danger),
-            new ButtonBuilder().setCustomId(`changebuyer-${tradeId}-${sellerId}`).setLabel("🔄 Anderen Käufer wählen").setStyle(ButtonStyle.Secondary)
-          )
-
-          return interaction.channel.send({
-            content: `⭐ Bewertung:\nVerkäufer: <@${sellerId}>\nKäufer: <@${buyerId}>`,
-            components: [row]
-          })
+        if (interaction.user.id !== sellerId) {
+          return interaction.editReply("❌ Nur Verkäufer!")
         }
+
+        const buyerId = interaction.values[0]
+
+        tradeRatings.set(tradeId, {
+          seller: sellerId,
+          buyer: buyerId,
+          rated: []
+        })
+
+        await interaction.editReply("✅ Verkauf abgeschlossen!")
+
+        const msg = interaction.message
+
+        setTimeout(async () => {
+          try {
+            if (msg.deletable) await msg.delete()
+
+            if (msg.reference?.messageId) {
+              const original = await msg.channel.messages.fetch(msg.reference.messageId)
+              if (original?.deletable) await original.delete()
+            }
+          } catch {}
+        }, 1000)
+
+        const row = new ActionRowBuilder().addComponents(
+          new ButtonBuilder().setCustomId(`rate-${tradeId}-seller-1`).setLabel("⭐ +1 Verkäufer").setStyle(ButtonStyle.Success),
+          new ButtonBuilder().setCustomId(`rate-${tradeId}-seller-neg`).setLabel("⭐ -1 Verkäufer").setStyle(ButtonStyle.Danger),
+          new ButtonBuilder().setCustomId(`rate-${tradeId}-buyer-1`).setLabel("⭐ +1 Käufer").setStyle(ButtonStyle.Success),
+          new ButtonBuilder().setCustomId(`rate-${tradeId}-buyer-neg`).setLabel("⭐ -1 Käufer").setStyle(ButtonStyle.Danger)
+        )
+
+        return interaction.channel.send({
+          content: `⭐ Bewertung:\nVerkäufer: <@${sellerId}>\nKäufer: <@${buyerId}>`,
+          components: [row]
+        })
       }
 
-      // ================= BUTTONS =================
       if (!interaction.isButton()) return
 
       const [action, sellerId] = interaction.customId.split("-")
+      const msg = interaction.message
 
       // 🟢 INTERESSE
       if (action === "interest") {
@@ -127,42 +136,7 @@ module.exports = {
         return interaction.editReply("🟡 Teil gespeichert!")
       }
 
-      // 🔄 ANDEREN KÄUFER WÄHLEN
-      if (action === "changebuyer") {
-
-        await interaction.deferReply({ flags: 64 })
-
-        if (interaction.user.id !== sellerId) {
-          return interaction.editReply("❌ Nur Verkäufer!")
-        }
-
-        const content = msg.content || ""
-        const users = [...content.matchAll(/<@(\d+)>/g)]
-
-        if (!users.length) {
-          return interaction.editReply("❌ Keine Interessenten!")
-        }
-
-        const menu = new StringSelectMenuBuilder()
-          .setCustomId(`selectbuyer-${msg.id}-${sellerId}`)
-          .setPlaceholder("👤 Neuen Käufer wählen")
-
-        users.forEach((u, index) => {
-          menu.addOptions({
-            label: `Käufer ${index + 1}`,
-            value: u[1]
-          })
-        })
-
-        const row = new ActionRowBuilder().addComponents(menu)
-
-        return interaction.editReply({
-          content: "🔄 Wähle neuen Käufer:",
-          components: [row]
-        })
-      }
-
-      // 🔴 VERKAUFT (JETZT MIT AUSWAHL)
+      // 🔴 VERKAUFT (ANGEPASST)
       if (action === "sold") {
 
         await interaction.deferReply({ flags: 64 })
@@ -175,24 +149,27 @@ module.exports = {
         const users = [...content.matchAll(/<@(\d+)>/g)]
 
         if (!users.length) {
-          return interaction.editReply("❌ Keine Interessenten!")
+          return interaction.editReply("❌ Kein Käufer!")
         }
 
         const menu = new StringSelectMenuBuilder()
           .setCustomId(`selectbuyer-${msg.id}-${sellerId}`)
-          .setPlaceholder("👤 Käufer auswählen")
+          .setPlaceholder("Wähle Käufer aus")
+          .addOptions(
+            users.map(u => {
+              const id = u[1]
+              const member = interaction.guild.members.cache.get(id)
 
-        users.forEach((u, index) => {
-          menu.addOptions({
-            label: `Käufer ${index + 1}`,
-            value: u[1]
-          })
-        })
+              return new StringSelectMenuOptionBuilder()
+                .setLabel(member?.user.username || `User ${id}`)
+                .setValue(id)
+            })
+          )
 
         const row = new ActionRowBuilder().addComponents(menu)
 
         return interaction.editReply({
-          content: "👤 Wähle den Käufer:",
+          content: "👤 Käufer auswählen:",
           components: [row]
         })
       }

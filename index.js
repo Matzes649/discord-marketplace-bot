@@ -4,6 +4,26 @@ const { Client, Collection, GatewayIntentBits } = require("discord.js")
 const mongoose = require("mongoose")
 const fs = require("fs")
 
+// ================= GLOBAL ERROR HANDLER =================
+
+// Uncaught Errors (crash → restart durch Railway)
+process.on("uncaughtException", (err) => {
+  console.error("❌ Uncaught Exception:", err)
+  process.exit(1)
+})
+
+// Promise Errors
+process.on("unhandledRejection", (reason) => {
+  console.error("❌ Unhandled Rejection:", reason)
+  process.exit(1)
+})
+
+// Warnings (optional)
+process.on("warning", (warning) => {
+  console.warn("⚠️ Warning:", warning)
+})
+
+
 // ❗ ENV CHECK (wichtig für Railway)
 if (!process.env.TOKEN) {
   console.error("❌ TOKEN fehlt!")
@@ -49,14 +69,17 @@ for (const file of eventFiles) {
   console.log("Event geladen:", event.name)
 }
 
-// READY EVENT (optional modern fix)
+// READY EVENT
 client.once("clientReady", () => {
   console.log(`✅ Bot online: ${client.user.tag}`)
 })
 
-// ✅ DB FIX (WICHTIG → ohne Optionen!)
+// DB CONNECT
 mongoose.connect(process.env.MONGO_URI)
   .then(() => console.log("✅ MongoDB verbunden"))
-  .catch(err => console.log("❌ DB Fehler:", err))
+  .catch(err => {
+    console.log("❌ DB Fehler:", err)
+    process.exit(1) // auch hier restart triggern
+  })
 
 client.login(process.env.TOKEN)

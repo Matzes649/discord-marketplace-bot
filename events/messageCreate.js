@@ -116,7 +116,10 @@ module.exports = {
 
     if (!allowedChannels.includes(message.channel.id)) return
 
-    const isSale = message.channel.id === "1486067292625174681"
+    const isSale = [
+      "1486067292625174681", // Verkauf
+      "1487913271448178890"  // Shop
+    ].includes(message.channel.id)
 
     const row = new ActionRowBuilder().addComponents(
       new ButtonBuilder()

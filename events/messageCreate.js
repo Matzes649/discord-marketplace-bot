@@ -66,8 +66,8 @@ module.exports = {
     const BUY_ONLY_ROLE_ID = "1486148513573376132"
 
     const saleKeywords = [
-      "verkaufe","verkauf","biete","angebote",
-      "zu verkaufen","selling","wts","vb","€"
+      "verkaufe","verkauf","biete","zu verkaufen",
+      "selling","wts","vb"
     ]
 
     const member = message.member || 

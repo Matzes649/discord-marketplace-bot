@@ -88,7 +88,14 @@ module.exports = {
         )
 
         return interaction.channel.send({
-          content: `⭐ Bewertung:\nVerkäufer: <@${sellerId}>\nKäufer: <@${buyerId}>`,
+          content: `⭐ Bewertung starten
+
+👤 Verkäufer: <@${sellerId}>
+👤 Käufer: <@${buyerId}>
+
+👉 Nur diese beiden Personen können bewerten
+
+⚠️ Bitte erst bewerten, wenn alles abgeschlossen ist (Geld + Ware angekommen)`,
           components: [row]
         })
       }
